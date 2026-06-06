@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Corrupted Chess</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+body{background:#000;color:#0f0;font-family:monospace;text-align:center}
+#board{width:480px;height:480px;margin:auto;display:grid;grid-template-columns:repeat(8,1fr)}
+.s{display:flex;align-items:center;justify-content:center;font-size:42px;cursor:pointer}
+.w{background:#bbb}.b{background:#555}
+.glitch{animation:shake .08s infinite}
+@keyframes shake{50%{transform:translate(2px,-1px)}}
+#dead{position:fixed;inset:0;background:black;color:red;font-size:140px;
+display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<h1 id="title">CORRUPTED CHESS</h1>
+<div>Round <span id="round">1</span>/10 | AI Wins <span id="wins">0</span></div>
+<div id="board"></div>
+<p id="msg"></p>
+
+<script>
+const game=new Chess();
+const board=document.getElementById('board');
+let sel=null;
+let round=1;
+let aiWins=Number(localStorage.aiWins||0);
+let played=Number(localStorage.gamesPlayed||0);
+document.getElementById('wins').textContent=aiWins;
+
+const map={p:"♟",r:"♜",n:"♞",b:"♝",q:"♛",k:"♚",
+           P:"♙",R:"♖",N:"♘",B:"♗",Q:"♕",K:"♔"};
+
+function render(){
+ board.innerHTML="";
+ let rows=game.board();
+ for(let y=0;y<8;y++){
+  for(let x=0;x<8;x++){
+   let d=document.createElement("div");
+   d.className="s "+(((x+y)&1)?"b":"w");
+   let p=rows[y][x];
+   d.textContent=p?map[p.color==="w"?p.type.toUpperCase():p.type]:"";
+   d.onclick=()=>click(x,y);
+   board.appendChild(d);
+  }
+ }
+ horror();
+}
+
+function click(x,y){
+ if(game.turn()!=="w") return;
+ const sq="abcdefgh"[x]+(8-y);
+ if(!sel){ sel=sq; return; }
+ let mv=game.move({from:sel,to:sq,promotion:'q'});
+ sel=null;
+ if(mv){ render(); setTimeout(aiMove,150); }
+}
+
+function aiMove(){
+ if(game.game_over()) return endGame();
+ let moves=game.moves();
+ if(!moves.length) return endGame();
+
+ let depth=Math.min(2+Math.floor(played/2),4);
+ let move=moves[Math.floor(Math.random()*moves.length)];
+ for(let i=0;i<depth;i++) move=moves[Math.floor(Math.random()*moves.length)];
+
+ game.move(move);
+ render();
+
+ if(game.game_over()) endGame();
+}
+
+function endGame(){
+ let msg=document.getElementById("msg");
+ if(game.in_checkmate() && game.turn()==='w'){
+   aiWins++;
+   localStorage.aiWins=aiWins;
+   document.getElementById('wins').textContent=aiWins;
+   msg.textContent="AI WON";
+ } else {
+   msg.textContent="ROUND ENDED";
+ }
+ played++;
+ localStorage.gamesPlayed=played;
+
+ if(aiWins>=10){
+   document.body.innerHTML='<div id="dead">DEAD</div>';
+   return;
+ }
+}
+
+function horror(){
+ let stage=Math.min(10,aiWins+1);
+ document.body.className=stage>3?"glitch":"";
+ document.getElementById("title").textContent=
+ stage<5?"CORRUPTED CHESS":
+ "C0RRUPT_"+Math.random().toString(36).slice(2,10);
+}
+render();
+</script>
+</body>
+</html>
